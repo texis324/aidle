@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AIDLE — 純生産性を奪い合え</title>
+<style>
+:root{
+  --bg:#070a12; --bg2:#0c1322; --panel:#101a2e; --panel2:#16233d;
+  --ink:#dfe9ff; --dim:#8190b4; --line:#22324f;
+  --cyan:#22e0ff; --mag:#ff3d9a; --lime:#9dff4e; --gold:#ffd24a; --red:#ff5366; --ok:#2fe6c0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(1200px 700px at 70% -10%,#13203a 0%,var(--bg) 60%);
+  color:var(--ink);font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif;
+  overflow:hidden;user-select:none;-webkit-user-select:none;
+}
+body.panic::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
+  box-shadow:inset 0 0 160px 30px rgba(255,40,70,.5);animation:beat .7s infinite}
+@keyframes beat{0%,100%{opacity:.3}50%{opacity:.85}}
+body.shake #game{animation:sh .18s infinite}
+@keyframes sh{0%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}75%{transform:translate(2px,-1px)}100%{transform:translate(0,0)}}
+
+#game{height:100%;display:flex;flex-direction:column;max-width:1480px;margin:0 auto}
+
+/* ---- HUD ---- */
+#top{padding:9px 16px 4px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:900;letter-spacing:3px;font-size:23px;
+  background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;font-size:10px;letter-spacing:2px;color:var(--dim);font-weight:600;margin-top:-2px}
+.stats{display:flex;gap:7px;margin-left:auto;flex-wrap:wrap}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 10px;font-size:12px;font-weight:700;display:flex;gap:6px;align-items:baseline}
+.stat b{font-size:16px}
+.stat.big b{font-size:19px;color:var(--gold)}
+.stat .lbl{color:var(--dim);font-size:9px;font-weight:600;letter-spacing:1px}
+#mute{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 9px;font-size:14px}
+
+/* ---- bars ---- */
+.bars{display:flex;gap:10px;margin-top:7px;flex-wrap:wrap}
+.barbox{flex:1;min-width:180px;display:flex;align-items:center;gap:8px}
+.barbox .cap{font-size:10px;letter-spacing:1px;color:var(--dim);font-weight:700;white-space:nowrap;width:78px;text-align:right}
+.track{flex:1;height:15px;background:#0a1120;border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative}
+.fill{height:100%;width:0%;border-radius:20px;transition:width .12s linear,background .3s}
+.track .pc{position:absolute;right:8px;top:0;line-height:15px;font-size:10px;font-weight:800;text-shadow:0 1px 2px #000}
+#trustFill{background:linear-gradient(90deg,#2fe6c0,#6bffd8)}
+#overFill{background:linear-gradient(90deg,var(--lime),var(--gold))}
+#attFill{background:linear-gradient(90deg,#5aa0ff,#22e0ff)}
+
+/* ---- orchestrators ---- */
+#orchRow{display:flex;gap:8px;padding:6px 16px 2px;flex-wrap:wrap;align-items:center}
+#orchRow .ttl{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1px}
+.orch{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 9px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px}
+.orch .ld{width:54px;height:7px;background:#0a1120;border-radius:5px;overflow:hidden}
+.orch .ld i{display:block;height:100%;background:var(--ok)}
+.orch.hot{border-color:var(--red);color:#ffd0d6}
+.orch.hot .ld i{background:var(--red)}
+.orch .tag{font-size:9px;color:var(--red);font-weight:900;letter-spacing:1px}
+
+/* ---- feed ---- */
+#feed{flex:1;overflow:auto;padding:8px 16px;display:grid;gap:11px;
+  grid-template-columns:repeat(auto-fill,minmax(258px,1fr));align-content:start}
+.rep{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+  border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;
+  animation:enter .25s ease-out}
+@keyframes enter{from{transform:translateY(-10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.rep.leave{animation:leave .25s ease-in forwards}
+@keyframes leave{to{transform:translateX(16px);opacity:0;filter:blur(2px)}}
+.rep.hot{border-color:#7a2230;box-shadow:0 0 0 1px #7a2230,0 0 20px -6px rgba(255,83,102,.6)}
+.rep .hd{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800}
+.rep .hd .who{display:flex;align-items:center;gap:6px}
+.rep .badge{margin-left:auto;font-size:9px;font-weight:900;letter-spacing:1px;color:#fff;background:#a32636;border:1px solid #ff5366;border-radius:6px;padding:2px 6px;animation:blink .8s steps(1) infinite}
+@keyframes blink{50%{opacity:.35}}
+.rep .claim{font-size:13px;font-weight:700;color:#e7efff;line-height:1.35;min-height:18px}
+.rep .meta{display:flex;gap:12px;font-size:11px;color:var(--dim);font-weight:700;flex-wrap:wrap}
+.rep .meta b{color:var(--ink)}
+.rep .conf{font-weight:900}
+.conf.hi{color:var(--ok)} .conf.mid{color:var(--gold)} .conf.lo{color:var(--red)}
+.rep .acts{display:flex;gap:6px;margin-top:2px}
+.rep .acts button{flex:1;cursor:pointer;border-radius:9px;padding:8px 4px;font-size:12px;font-weight:800;
+  border:1px solid var(--line);background:#0e1830;color:var(--ink);transition:transform .06s,background .12s,border-color .12s,opacity .12s}
+.rep .acts button:hover{background:#16294d}
+.rep .acts button:active{transform:scale(.95)}
+.rep .acts .ship{border-color:#2a6f63;color:#bff3e9}
+.rep .acts .ship:hover{background:#10342e}
+.rep .acts .ver{border-color:#2c5a8f;color:#bfe0ff}
+.rep .acts .ver:hover{background:#102742}
+.rep .acts .ver .sub{display:block;font-size:9px;color:var(--dim);font-weight:700;margin-top:1px}
+.rep .acts .ver.off{opacity:.35;cursor:not-allowed}
+.rep .acts .disc{border-color:#4a3a22;color:#e8c79a;flex:0 0 64px}
+
+.float{position:absolute;left:50%;top:36%;transform:translateX(-50%);font-weight:900;font-size:16px;
+  pointer-events:none;text-shadow:0 1px 4px #000;animation:rise 1s ease-out forwards;z-index:5}
+@keyframes rise{0%{opacity:1}100%{transform:translate(-50%,-40px);opacity:0}}
+.float.good{color:var(--ok)} .float.ok{color:var(--cyan)} .float.bad{color:var(--red)} .float.dim{color:var(--dim)}
+
+/* ---- shop ---- */
+#shop{display:flex;gap:9px;padding:10px 16px 15px;flex-wrap:wrap;border-top:1px solid var(--line);background:rgba(8,12,22,.6)}
+.buy{flex:1;min-width:140px;cursor:pointer;border:1px solid var(--line);border-radius:11px;padding:8px 11px;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));color:var(--ink);text-align:left;
+  transition:transform .06s,border-color .12s,box-shadow .12s}
+.buy:hover{border-color:var(--cyan);box-shadow:0 0 16px -6px var(--cyan)}
+.buy:active{transform:scale(.98)}
+.buy:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.6)}
+.buy .h{font-weight:800;font-size:13px;display:flex;align-items:center;gap:5px}
+.buy .d{font-size:10px;color:var(--dim);margin-top:2px;line-height:1.3}
+.buy .c{color:var(--gold);font-weight:900;font-size:12px;margin-top:3px}
+.buy.breath{flex:0 0 auto;min-width:110px}
+
+/* ---- overlays ---- */
+.ov{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(4,7,14,.87);backdrop-filter:blur(4px)}
+.ov.hide{display:none}
+.box{max-width:600px;text-align:center;padding:28px 32px;background:linear-gradient(180deg,var(--panel2),var(--bg2));
+  border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 80px -20px #000}
+.box h1{margin:0 0 2px;font-size:44px;letter-spacing:4px;background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+.box .tag{color:var(--dim);font-size:13px;letter-spacing:3px;margin-bottom:16px;font-weight:700}
+.box p{font-size:14px;line-height:1.6;margin:8px 0}
+.box .hl{color:var(--cyan);font-weight:800} .box .warn{color:var(--red);font-weight:800}
+.howto{text-align:left;background:#0a1322;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin:14px 0;font-size:12.5px;line-height:1.7}
+.howto b{color:var(--gold)} .howto .k{display:inline-block;background:#16294d;border:1px solid var(--line);border-radius:5px;padding:0 6px;font-weight:800;font-size:11px;color:#cfe6ff}
+.big{cursor:pointer;margin-top:16px;border:none;border-radius:13px;padding:13px 38px;font-size:17px;font-weight:900;letter-spacing:2px;color:#04121a;background:linear-gradient(90deg,var(--cyan),#7df0ff);box-shadow:0 8px 30px -8px var(--cyan)}
+.big:hover{filter:brightness(1.08)} .big:active{transform:scale(.97)}
+#over .verdict{font-size:18px;font-weight:900;margin-top:8px}
+#over .score{font-size:13px;color:var(--dim);margin-top:12px;line-height:1.7}
+.tiny{font-size:11px;color:var(--dim);margin-top:12px}
+.vs{display:flex;gap:14px;justify-content:center;margin:14px 0}
+.vs .col{flex:1;max-width:200px;background:#0a1322;border:1px solid var(--line);border-radius:12px;padding:12px}
+.vs .col .l{font-size:11px;color:var(--dim);font-weight:700}
+.vs .col .n{font-size:26px;font-weight:900;margin-top:4px}
+.vs .me .n{color:var(--cyan)} .vs .ri .n{color:var(--mag)}
+</style>
+</head>
+<body>
+<div id="game" aria-hidden="true">
+  <div id="top">
+    <div class="row">
+      <div class="brand">AIDLE<small>純生産性を奪い合え</small></div>
+      <div class="stats">
+        <div class="stat big"><span class="lbl">純生産性</span><b id="sProd">¥0</b></div>
+        <div class="stat"><span class="lbl">並列農場</span><b id="sRival">¥0</b></div>
+        <div class="stat"><span class="lbl">AI</span><b id="sWorkers">0</b></div>
+        <div class="stat"><span class="lbl">司令塔</span><b id="sOrchs">0</b></div>
+        <div class="stat"><span class="lbl">経過</span><b id="sTime">0s</b></div>
+        <div id="mute" title="サウンド">🔊</div>
+      </div>
+    </div>
+    <div class="bars">
+      <div class="barbox"><span class="cap">信頼</span><div class="track"><div id="trustFill" class="fill"></div><span id="trustPc" class="pc"></span></div></div>
+      <div class="barbox"><span class="cap">焦燥</span><div class="track"><div id="overFill" class="fill"></div><span id="overPc" class="pc"></span></div></div>
+      <div class="barbox"><span class="cap">集中</span><div class="track"><div id="attFill" class="fill"></div><span id="attPc" class="pc"></span></div></div>
+    </div>
+  </div>
+
+  <div id="orchRow"><span class="ttl">司令塔の負荷 ▸</span></div>
+
+  <div id="feed"></div>
+
+  <div id="shop">
+    <button class="buy" data-act="worker">
+      <div class="h">🤖 AIを増やす</div>
+      <div class="d">生産量↑。でも報告が増えて溺れやすくなる。</div>
+      <div class="c" id="cWorker">¥40</div>
+    </button>
+    <button class="buy" data-act="orch">
+      <div class="h">🎖 司令塔を増やす</div>
+      <div class="d">群を分担＝過負荷を解消し報告が正直に。ただし報告の本数は増える。</div>
+      <div class="c" id="cOrch">¥120</div>
+    </button>
+    <button class="buy" data-act="verify">
+      <div class="h">🔍 検証AI</div>
+      <div class="d">検証の集中コストを軽減。</div>
+      <div class="c" id="cVerify">¥90</div>
+    </button>
+    <button class="buy" data-act="focus">
+      <div class="h">🧠 集中力</div>
+      <div class="d">集中の上限と回復↑。判断帯域を広げる。</div>
+      <div class="c" id="cFocus">¥70</div>
+    </button>
+    <button class="buy breath" data-act="breath">
+      <div class="h">🫁 深呼吸</div>
+      <div class="d">焦燥 −35</div>
+      <div class="c" id="cBreath">¥30</div>
+    </button>
+  </div>
+</div>
+
+<!-- start -->
+<div id="start" class="ov">
+  <div class="box">
+    <h1>AIDLE</h1>
+    <div class="tag">A I &nbsp;×&nbsp; I D L E</div>
+    <p>あなたは何百ものAIを回す指揮官。だが大群は直接見えない。<br><span class="hl">司令塔の「報告」</span>だけが、ひっきりなしに上がってくる。</p>
+    <div class="howto">
+      <b>▸</b> 各報告を即断 → <span class="k">出荷</span>信じて即出荷（速いがスロップ混入リスク）／<span class="k">検証</span>集中を使い精査してスロップ除去／<span class="k">捨てる</span><br>
+      <b>▸</b> <span class="warn">⚠過負荷</span>の司令塔は確信度を<b style="color:#ffd24a">盛って嘘をつく</b>。鵜呑み注意。<br>
+      <b>▸</b> 報告を溜めると <span class="warn">焦燥</span> が満ちて燃え尽き。スロップ出荷で <span class="warn">信頼</span> が尽きてもクビ。<br>
+      <b>▸</b> ¥(純生産性)でAIや司令塔を増やせ。<b>増やすほど儲かるが、増やすほど溺れる。</b><br>
+      <b>▸</b> 数だけの<span class="hl">並列農場</span>に、純生産性で勝て。
+    </div>
+    <button class="big" id="startBtn">指揮を執る</button>
+    <div class="tiny">クリックだけで遊べる / 音が出ます</div>
+  </div>
+</div>
+
+<!-- game over -->
+<div id="over" class="ov hide">
+  <div class="box">
+    <h1 id="overTitle" style="font-size:36px">燃え尽きた</h1>
+    <div class="tag" id="overSub">BURNOUT</div>
+    <p id="overLine"></p>
+    <div class="vs">
+      <div class="col me"><div class="l">あなたの純生産性</div><div class="n" id="overMe">¥0</div></div>
+      <div class="col ri"><div class="l">並列農場</div><div class="n" id="overRi">¥0</div></div>
+    </div>
+    <div class="verdict" id="overVerdict"></div>
+    <div class="score" id="overScore"></div>
+    <button class="big" id="againBtn">もう一度</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const FEED=$("#feed"), ORCH=$("#orchRow");
+const rnd=()=>Math.random();
+const yen=n=>"¥"+Math.round(n).toLocaleString();
+
+const ORCH_NAMES=["司令塔ZERO","司令塔ACE","司令塔NOVA","司令塔ECHO","司令塔IRIS","司令塔ODIN","司令塔LUNA","司令塔KILO"];
+const CLAIM={
+  hi:["全部出荷OKです！","完璧です、自信あります✨","問題なし、即出荷推奨"],
+  mid:["概ね良好、出荷推奨です","だいたい大丈夫かと","良い感じに仕上げました"],
+  lo:["一部あやしいですが…","微妙なの混ざってるかも","正直、自信ないです⚠"]
+};
+
+let S, raf=0, lastT=0, soundOn=true, actx=null, idc=0;
+
+function newState(){
+  return {
+    running:false, elapsed:0,
+    prod:0, earned:0, rival:0,
+    trust:72, over:0,
+    att:100, attMax:100, attRegen:9,
+    workers:6, orchCap:8,
+    orchs:[], slop:0,
+    verifyMul:1,
+    wCost:40, oCost:120, vCost:90, fCost:70, bCost:30,
+    feedCap:5, reports:[],
+  };
+}
+function makeOrch(){ const n=ORCH_NAMES[S.orchs.length%ORCH_NAMES.length];
+  return {id:++idc, name:n, timer:1+rnd()*1.5}; }
+
+function wpo(){ return S.workers/Math.max(1,S.orchs.length); }
+function orchInterval(load){ return Math.max(1.0, 3.4 - load*0.12); }
+function slopPressure(){ return S.elapsed/440; }
+function verifyCost(items){ return Math.max(6, Math.round((9+items*1.35)*S.verifyMul)); }
+
+/* ---------- reports ---------- */
+function spawnReport(orch){
+  const load=wpo();
+  const overF=Math.max(0, load/S.orchCap - 1);
+  const items=Math.max(2, Math.round(load*(0.5+rnd()*0.55)));
+  let trueQ=0.6+rnd()*0.3 - overF*0.42 - slopPressure();
+  trueQ=Math.max(0.04,Math.min(0.98,trueQ));
+  let conf=trueQ + overF*0.34 + (rnd()-0.5)*0.13;          // overloaded → inflated (the lie)
+  conf=Math.max(0.05,Math.min(0.99,conf));
+  const r={id:++idc, orch:orch.name, hot:overF>0.16, items, trueQ, conf,
+           vcost:verifyCost(items), el:null, verBtn:null, done:false};
+  S.reports.unshift(r); addCard(r);
+}
+function resolveReport(r, action){
+  if(r.done) return; r.done=true;
+  const i=S.reports.indexOf(r); if(i>=0) S.reports.splice(i,1);
+  const V=8.5*(1+slopPressure())*(0.5+S.trust/100);
+  const good=Math.round(r.items*r.trueQ), slop=r.items-good;
+  let txt="", cls="dim";
+  if(action==="ship"){
+    const gain=Math.round(good*V - slop*V*1.35);
+    S.prod+=gain; if(gain>0) S.earned+=gain;
+    if(slop<=0){ S.trust=Math.min(100,S.trust+1.3); txt="+"+yen(gain)+" クリーン"; cls="good"; ding(720); }
+    else { S.trust=Math.max(0,S.trust-slop*1.15); S.slop+=slop; txt=(gain<0?"":"+")+yen(gain)+" スロップ混入"; cls="bad"; buzz(); }
+  } else if(action==="verify"){
+    if(S.att<r.vcost){ r.done=false; S.reports.splice(Math.max(0,i),0,r); flash(r,"集中不足"); return; }
+    S.att-=r.vcost;
+    const gain=Math.round(good*V);
+    S.prod+=gain; S.earned+=gain; S.trust=Math.min(100,S.trust+0.7);
+    txt="+"+yen(gain)+(slop>0?" 精査済("+slop+"件除去)":" 精査済"); cls="ok"; ding(960);
+  } else { // discard
+    txt="破棄"; cls="dim"; thud();
+  }
+  floatResult(r.el, txt, cls);
+  removeCard(r);
+}
+
+/* ---------- loop ---------- */
+function tick(dt){
+  S.elapsed+=dt;
+  // orchestrators emit reports independently
+  const load=wpo();
+  for(const o of S.orchs){
+    o.timer-=dt;
+    if(o.timer<=0){ o.timer=orchInterval(load); if(S.reports.length<40) spawnReport(o); }
+  }
+  // attention regen
+  S.att=Math.min(S.attMax, S.att+S.attRegen*dt);
+  // overload from unhandled backlog
+  const excess=S.reports.length-S.feedCap;
+  if(excess>0) S.over+=excess*6.5*dt; else S.over-=6*dt;
+  S.over=Math.max(0,Math.min(100,S.over));
+  // rival farm climbs (raw volume, accelerating)
+  S.rival+=(11+S.elapsed*0.32)*dt;
+  // fail states
+  if(S.over>=100) return gameOver("drown");
+  if(S.trust<=0) return gameOver("trust");
+}
+
+/* ---------- render ---------- */
+function render(){
+  $("#sProd").textContent=yen(S.prod);
+  $("#sRival").textContent=yen(S.rival);
+  $("#sWorkers").textContent=S.workers;
+  $("#sOrchs").textContent=S.orchs.length;
+  $("#sTime").textContent=Math.floor(S.elapsed)+"s";
+  setBar("trust",S.trust, S.trust>40?"linear-gradient(90deg,#2fe6c0,#6bffd8)":"linear-gradient(90deg,#ff8a5a,#ff5366)");
+  setBar("over",S.over, S.over>75?"linear-gradient(90deg,#ff6a6a,#ff2d2d)":S.over>45?"linear-gradient(90deg,#ffd24a,#ff9d3d)":"linear-gradient(90deg,#9dff4e,#ffd24a)");
+  setBar("att",S.att/S.attMax*100,"linear-gradient(90deg,#5aa0ff,#22e0ff)");
+  document.body.classList.toggle("panic",S.over>=78);
+  document.body.classList.toggle("shake",S.over>=92);
+  renderOrchs();
+  // verify affordability on live cards
+  for(const r of S.reports) if(r.verBtn) r.verBtn.classList.toggle("off", S.att<r.vcost);
+  // shop
+  $("#cWorker").textContent=yen(S.wCost);
+  $("#cOrch").textContent=yen(S.oCost);
+  $("#cVerify").textContent=yen(S.vCost)+(S.verifyMul<1?" (×"+S.verifyMul.toFixed(2)+")":"");
+  $("#cFocus").textContent=yen(S.fCost);
+  $("#cBreath").textContent=yen(S.bCost);
+  for(const[a,c]of[["worker",S.wCost],["orch",S.oCost],["verify",S.vCost],["focus",S.fCost],["breath",S.bCost]]){
+    const b=document.querySelector('.buy[data-act="'+a+'"]'); if(b) b.disabled=S.prod<c;
+  }
+}
+function setBar(id,pc,bg){ const f=$("#"+id+"Fill"); f.style.width=Math.max(0,Math.min(100,pc))+"%"; f.style.background=bg; $("#"+id+"Pc").textContent=Math.floor(pc)+"%"; }
+function renderOrchs(){
+  // rebuild chips only if count changed
+  const want=S.orchs.length;
+  if(ORCH._n!==want){ ORCH._n=want;
+    ORCH.innerHTML='<span class="ttl">司令塔の負荷 ▸</span>';
+    for(const o of S.orchs){ const d=document.createElement("div"); d.className="orch"; o.chip=d;
+      d.innerHTML='<span>🎖 '+o.name+'</span><div class="ld"><i></i></div><span class="tag"></span>'; ORCH.appendChild(d); }
+  }
+  const load=wpo(), ratio=load/S.orchCap;
+  for(const o of S.orchs){ if(!o.chip)continue;
+    o.chip.querySelector("i").style.width=Math.min(100,ratio*100)+"%";
+    const hot=ratio>1.0;
+    o.chip.classList.toggle("hot",hot);
+    o.chip.querySelector(".tag").textContent=hot?"過負荷":"";
+  }
+}
+
+/* ---------- cards ---------- */
+function addCard(r){
+  const d=document.createElement("div"); d.className="rep"+(r.hot?" hot":""); r.el=d;
+  const lvl=r.conf>0.78?"hi":r.conf>0.6?"mid":"lo";
+  const claim=CLAIM[lvl][Math.floor(rnd()*CLAIM[lvl].length)];
+  const confCls=r.conf>0.78?"hi":r.conf>0.6?"mid":"lo";
+  d.innerHTML=
+    '<div class="hd"><span class="who">🎖 '+r.orch+'</span>'+(r.hot?'<span class="badge">⚠過負荷</span>':'')+'</div>'+
+    '<div class="claim">「'+claim+'」</div>'+
+    '<div class="meta"><span>📦 <b>'+r.items+'</b>件</span><span>確信度 <span class="conf '+confCls+'">'+Math.round(r.conf*100)+'%</span></span></div>'+
+    '<div class="acts">'+
+      '<button class="ship">出荷</button>'+
+      '<button class="ver">検証<span class="sub">集中 −'+r.vcost+'</span></button>'+
+      '<button class="disc">捨てる</button>'+
+    '</div>';
+  d.querySelector(".ship").addEventListener("click",()=>{resolveReport(r,"ship");render();});
+  const vb=d.querySelector(".ver"); r.verBtn=vb;
+  vb.addEventListener("click",()=>{resolveReport(r,"verify");render();});
+  d.querySelector(".disc").addEventListener("click",()=>{resolveReport(r,"discard");render();});
+  FEED.insertBefore(d, FEED.firstChild);
+}
+function removeCard(r){ if(!r.el)return; const el=r.el; el.classList.add("leave"); el.style.pointerEvents="none"; setTimeout(()=>el.remove(),240); }
+function floatResult(parent,txt,cls){ if(!parent)return; const f=document.createElement("div"); f.className="float "+cls; f.textContent=txt; parent.appendChild(f); }
+function flash(r,msg){ if(!r.el)return; const f=document.createElement("div"); f.className="float bad"; f.textContent=msg; r.el.appendChild(f); setTimeout(()=>f.remove(),900); }
+
+/* ---------- shop ---------- */
+function buy(act){
+  if(act==="worker"){ if(S.prod<S.wCost)return; S.prod-=S.wCost; S.wCost=Math.round(S.wCost*1.5); S.workers+=2; blip(300); }
+  else if(act==="orch"){ if(S.prod<S.oCost)return; S.prod-=S.oCost; S.oCost=Math.round(S.oCost*1.7); S.orchs.push(makeOrch()); blip(520); }
+  else if(act==="verify"){ if(S.prod<S.vCost)return; S.prod-=S.vCost; S.vCost=Math.round(S.vCost*1.6); S.verifyMul=Math.max(0.4,S.verifyMul-0.15);
+    for(const r of S.reports){ r.vcost=verifyCost(r.items); if(r.verBtn) r.verBtn.querySelector(".sub").textContent="集中 −"+r.vcost; } blip(800); }
+  else if(act==="focus"){ if(S.prod<S.fCost)return; S.prod-=S.fCost; S.fCost=Math.round(S.fCost*1.6); S.attMax+=25; S.attRegen+=2; S.att+=25; blip(640); }
+  else if(act==="breath"){ if(S.prod<S.bCost)return; S.prod-=S.bCost; S.bCost=Math.round(S.bCost*1.15); S.over=Math.max(0,S.over-35); ding(200); }
+}
+
+/* ---------- audio ---------- */
+function initAudio(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } }
+function tone(f,d,t,v){ if(!soundOn||!actx)return; try{ const o=actx.createOscillator(),g=actx.createGain();
+  o.type=t||"sine"; o.frequency.value=f; g.gain.value=v||.05; o.connect(g); g.connect(actx.destination);
+  const n=actx.currentTime; o.start(n); g.gain.exponentialRampToValueAtTime(.0001,n+d); o.stop(n+d);}catch(e){} }
+function ding(f){ tone(f,.07,"sine",.06); setTimeout(()=>tone(f*1.33,.08,"sine",.05),55); }
+function buzz(){ tone(150,.18,"sawtooth",.08); }
+function blip(f){ tone(f,.09,"triangle",.06); }
+function thud(){ tone(120,.1,"sine",.05); }
+let hb=0;
+function heartbeat(dt){ if(S.over<72||!soundOn)return; hb-=dt; if(hb<=0){ hb=Math.max(.32,1.1-(S.over-72)/40); tone(68,.12,"sine",.09);} }
+
+/* ---------- flow ---------- */
+function startGame(){
+  S=newState(); S.running=true;
+  FEED.innerHTML=""; ORCH._n=-1;
+  S.orchs.push(makeOrch());
+  $("#start").classList.add("hide"); $("#over").classList.add("hide");
+  document.body.classList.remove("panic","shake");
+  lastT=0; cancelAnimationFrame(raf); raf=requestAnimationFrame(frame);
+}
+function frame(t){
+  if(!lastT)lastT=t; let dt=(t-lastT)/1000; lastT=t; if(dt>0.1)dt=0.1;
+  if(S.running){ tick(dt); if(S.running){ heartbeat(dt); render(); } }
+  raf=requestAnimationFrame(frame);
+}
+function gameOver(cause){
+  S.running=false; document.body.classList.remove("panic","shake");
+  tone(420,.2,"sawtooth",.08); setTimeout(()=>tone(280,.25,"sawtooth",.08),150); setTimeout(()=>tone(150,.4,"sawtooth",.08),330);
+  const win=S.earned>=S.rival;
+  $("#overTitle").textContent = cause==="trust"?"信用破産":"溺れた";
+  $("#overSub").textContent = cause==="trust"?"TRUST BANKRUPT":"DROWNED IN REPORTS";
+  $("#overLine").innerHTML = cause==="trust"
+    ? "スロップを出荷しすぎた。<span class='hl'>信頼</span>が尽き、誰もお前の成果を信じなくなった。"
+    : "報告の濁流に呑まれた。<span class='hl'>"+S.workers+"体</span>のAIを <span class='hl'>"+S.orchs.length+"司令塔</span>で回し、<span class='hl'>"+Math.floor(S.elapsed)+"秒</span>持ちこたえた。";
+  $("#overMe").textContent=yen(S.earned);
+  $("#overRi").textContent=yen(S.rival);
+  $("#overVerdict").innerHTML = win
+    ? "<span style='color:#22e0ff'>数だけの並列農場を出し抜いた。質が勝った。</span>"
+    : "<span style='color:#ff3d9a'>並列農場に呑まれた。…で、空前絶後の生産性は？(笑)</span>";
+  $("#overScore").innerHTML="累計成果 "+yen(S.earned)+" ・ スロップ出荷 "+S.slop+"件 ・ 生存 "+Math.floor(S.elapsed)+"s";
+  $("#over").classList.remove("hide");
+}
+
+/* ---------- events ---------- */
+$("#shop").addEventListener("click",e=>{ const b=e.target.closest(".buy"); if(!b||b.disabled)return; buy(b.dataset.act); render(); });
+$("#mute").addEventListener("click",()=>{ soundOn=!soundOn; $("#mute").textContent=soundOn?"🔊":"🔇"; });
+$("#startBtn").addEventListener("click",()=>{ initAudio(); startGame(); });
+$("#againBtn").addEventListener("click",startGame);
+
+S=newState();
+</script>
+</body>
+</html>
