@@ -61,7 +61,7 @@ body.shake #game{animation:sh .18s infinite}
 
 /* ---- feed ---- */
 #feed{flex:1;overflow:auto;padding:8px 16px;display:grid;gap:11px;
-  grid-template-columns:repeat(auto-fill,minmax(258px,1fr));align-content:start}
+  grid-template-columns:repeat(auto-fill,minmax(258px,1fr));align-content:start;grid-auto-rows:max-content}
 .rep{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
   border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;
   animation:enter .25s ease-out}
