@@ -130,6 +130,41 @@ body.shake #game{animation:sh .18s infinite}
 .vs .col .l{font-size:11px;color:var(--dim);font-weight:700}
 .vs .col .n{font-size:26px;font-weight:900;margin-top:4px}
 .vs .me .n{color:var(--cyan)} .vs .ri .n{color:var(--mag)}
+
+/* ===== mobile (phone) — compress chrome, maximize play area ===== */
+@media (max-width:600px){
+  #top{padding:6px 10px 2px}
+  .brand{font-size:16px;letter-spacing:2px}
+  .brand small{font-size:8px;letter-spacing:1px;margin-top:-1px}
+  .stats{gap:5px}
+  .stat{padding:2px 7px;font-size:10px;border-radius:7px;gap:4px}
+  .stat b{font-size:13px}
+  .stat.big b{font-size:15px}
+  .stat .lbl{font-size:8px}
+  #mute{padding:2px 7px;font-size:13px}
+  .bars{gap:6px;margin-top:5px}
+  .barbox{flex:1 1 0;min-width:0;gap:5px}
+  .barbox .cap{width:26px;font-size:9px;letter-spacing:0}
+  .track{height:12px}
+  .track .pc{font-size:9px;right:5px;line-height:12px}
+  #orchRow{padding:3px 10px 0;gap:6px}
+  #orchRow .ttl{display:none}
+  .orch{padding:3px 7px;font-size:10px;gap:5px}
+  .orch .ld{width:36px;height:6px}
+  #feed{padding:7px 10px;gap:9px;grid-template-columns:1fr}
+  .rep{padding:9px 10px;gap:6px;min-height:0;border-radius:11px}
+  .rep .hd{font-size:12px}
+  .rep .claim{font-size:12.5px}
+  .rep .meta{font-size:10.5px;gap:10px}
+  .rep .acts button{padding:9px 4px;font-size:12px}
+  .rep .acts .ver .sub{font-size:8px}
+  #shop{padding:7px 10px 9px;gap:6px}
+  .buy{min-width:98px;padding:6px 9px;border-radius:10px}
+  .buy .d{display:none}
+  .buy .h{font-size:11px;gap:4px}
+  .buy .c{font-size:11px;margin-top:2px}
+  .buy.breath{min-width:84px}
+}
 </style>
 </head>
 <body>
