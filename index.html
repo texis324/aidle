@@ -37,6 +37,11 @@ body.shake #game{animation:sh .18s infinite}
 .stat.big b{font-size:19px;color:var(--gold)}
 .stat .lbl{color:var(--dim);font-size:9px;font-weight:600;letter-spacing:1px}
 #mute{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 9px;font-size:14px}
+#pauseBtn{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 9px;font-size:14px;font-weight:800}
+#pauseBtn:hover,#mute:hover{border-color:var(--cyan)}
+#pause{background:rgba(4,7,14,.66)}
+#pause .box{max-width:430px}
+#pause .warn{display:block;margin-top:8px}
 
 /* ---- bars ---- */
 .bars{display:flex;gap:10px;margin-top:7px;flex-wrap:wrap}
@@ -178,6 +183,7 @@ body.shake #game{animation:sh .18s infinite}
         <div class="stat"><span class="lbl">AI</span><b id="sWorkers">0</b></div>
         <div class="stat"><span class="lbl">司令塔</span><b id="sOrchs">0</b></div>
         <div class="stat"><span class="lbl">経過</span><b id="sTime">0s</b></div>
+        <div id="pauseBtn" title="一時停止 (Space)">⏸</div>
         <div id="mute" title="サウンド">🔊</div>
       </div>
     </div>
@@ -255,6 +261,17 @@ body.shake #game{animation:sh .18s infinite}
   </div>
 </div>
 
+<!-- pause -->
+<div id="pause" class="ov hide">
+  <div class="box">
+    <h1 style="font-size:34px">⏸ 一時停止</h1>
+    <div class="tag">FROZEN</div>
+    <p>AIたちは凍りついたまま、<span class="hl">お前の次の指示</span>を待っている…<span class="warn">本当は、止まってる場合じゃないんだけどな。</span></p>
+    <button class="big" id="resumeBtn">▶ 再開</button>
+    <div class="tiny">Space / P / 画面クリックで再開</div>
+  </div>
+</div>
+
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -273,7 +290,7 @@ let S, raf=0, lastT=0, soundOn=true, actx=null, idc=0;
 
 function newState(){
   return {
-    running:false, elapsed:0,
+    running:false, paused:false, elapsed:0,
     prod:0, earned:0, rival:0,
     trust:72, over:0,
     att:100, attMax:100, attRegen:9,
@@ -446,15 +463,25 @@ function startGame(){
   S=newState(); S.running=true;
   FEED.innerHTML=""; ORCH._n=-1;
   S.orchs.push(makeOrch());
-  $("#start").classList.add("hide"); $("#over").classList.add("hide");
+  $("#start").classList.add("hide"); $("#over").classList.add("hide"); $("#pause").classList.add("hide");
+  $("#pauseBtn").textContent="⏸";
   document.body.classList.remove("panic","shake");
   lastT=0; cancelAnimationFrame(raf); raf=requestAnimationFrame(frame);
 }
 function frame(t){
   if(!lastT)lastT=t; let dt=(t-lastT)/1000; lastT=t; if(dt>0.1)dt=0.1;
-  if(S.running){ tick(dt); if(S.running){ heartbeat(dt); render(); } }
+  if(S.running && !S.paused){ tick(dt); if(S.running){ heartbeat(dt); render(); } }
   raf=requestAnimationFrame(frame);
 }
+function setPaused(p){
+  if(!S||!S.running) return;
+  S.paused=p;
+  $("#pause").classList.toggle("hide",!p);
+  $("#pauseBtn").textContent = p?"▶":"⏸";
+  if(p) document.body.classList.remove("panic","shake");
+  blip(p?320:520);
+}
+function togglePause(){ if(S&&S.running) setPaused(!S.paused); }
 function gameOver(cause){
   S.running=false; document.body.classList.remove("panic","shake");
   tone(420,.2,"sawtooth",.08); setTimeout(()=>tone(280,.25,"sawtooth",.08),150); setTimeout(()=>tone(150,.4,"sawtooth",.08),330);
@@ -476,6 +503,12 @@ function gameOver(cause){
 /* ---------- events ---------- */
 $("#shop").addEventListener("click",e=>{ const b=e.target.closest(".buy"); if(!b||b.disabled)return; buy(b.dataset.act); render(); });
 $("#mute").addEventListener("click",()=>{ soundOn=!soundOn; $("#mute").textContent=soundOn?"🔊":"🔇"; });
+$("#pauseBtn").addEventListener("click",togglePause);
+$("#resumeBtn").addEventListener("click",()=>setPaused(false));
+$("#pause").addEventListener("click",e=>{ if(e.target.id==="pause") setPaused(false); });
+window.addEventListener("keydown",e=>{
+  if((e.code==="Space"||e.key==="p"||e.key==="P") && S && S.running){ e.preventDefault(); togglePause(); }
+});
 $("#startBtn").addEventListener("click",()=>{ initAudio(); startGame(); });
 $("#againBtn").addEventListener("click",startGame);
 
