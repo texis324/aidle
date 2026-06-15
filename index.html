@@ -70,7 +70,7 @@ body.shake #game{animation:sh .18s infinite}
 .rep{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
   border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;
   animation:enter .25s ease-out}
-@keyframes enter{from{transform:translateY(-10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+@keyframes enter{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
 .rep.leave{animation:leave .25s ease-in forwards}
 @keyframes leave{to{transform:translateX(16px);opacity:0;filter:blur(2px)}}
 .rep.hot{border-color:#7a2230;box-shadow:0 0 0 1px #7a2230,0 0 20px -6px rgba(255,83,102,.6)}
@@ -430,7 +430,7 @@ function addCard(r){
   const vb=d.querySelector(".ver"); r.verBtn=vb;
   vb.addEventListener("click",()=>{resolveReport(r,"verify");render();});
   d.querySelector(".disc").addEventListener("click",()=>{resolveReport(r,"discard");render();});
-  FEED.insertBefore(d, FEED.firstChild);
+  FEED.appendChild(d);   // 新着は下に追加（既存カードがズレず誤タップを防ぐ）
 }
 function removeCard(r){ if(!r.el)return; const el=r.el; el.classList.add("leave"); el.style.pointerEvents="none"; setTimeout(()=>el.remove(),240); }
 function floatResult(parent,txt,cls){ if(!parent)return; const f=document.createElement("div"); f.className="float "+cls; f.textContent=txt; parent.appendChild(f); }
