@@ -68,6 +68,10 @@ body.shake #game{animation:sh .18s infinite}
 .srfill.ri{background:linear-gradient(90deg,#ff3d9a,#ff5366)}
 .srbar .srpc{font-size:10px;font-weight:800;width:34px}
 
+/* ---- pause hint (freeze in place, no overlay) ---- */
+#pauseHint{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(16,26,46,.94);border:1px solid var(--cyan);color:var(--cyan);font-size:12px;font-weight:800;letter-spacing:.5px;padding:6px 16px;border-radius:20px;pointer-events:none;box-shadow:0 4px 18px -6px #000}
+#pauseHint.hide{display:none}
+
 /* ---- orchestrators ---- */
 #orchRow{display:flex;gap:8px;padding:6px 16px 2px;flex-wrap:wrap;align-items:center}
 #orchRow .ttl{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1px}
@@ -266,6 +270,8 @@ body.shake #game{animation:sh .18s infinite}
     </button>
   </div>
 </div>
+
+<div id="pauseHint" class="hide">⏸ 時間停止中 — Space / P / ⏸ で再開</div>
 
 <!-- start -->
 <div id="start" class="ov">
@@ -547,6 +553,7 @@ function startGame(){
   $("#pauseBtn").textContent="⏸";
   document.body.classList.remove("panic","shake");
   lastT=0; cancelAnimationFrame(raf); raf=requestAnimationFrame(frame);
+  render(); setPaused(true);   // 盤面を描いてから時間停止で開始＝把握してから進められる
 }
 function frame(t){
   if(!lastT)lastT=t; let dt=(t-lastT)/1000; lastT=t; if(dt>0.1)dt=0.1;
@@ -556,7 +563,7 @@ function frame(t){
 function setPaused(p){
   if(!S||!S.running) return;
   S.paused=p;
-  $("#pause").classList.toggle("hide",!p);
+  $("#pauseHint").classList.toggle("hide",!p);
   $("#pauseBtn").textContent = p?"▶":"⏸";
   if(p) document.body.classList.remove("panic","shake");
   blip(p?320:520);
