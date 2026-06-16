@@ -224,6 +224,7 @@ body.shake #game{animation:sh .18s infinite}
       <div class="barbox" data-tip="trust"><span class="cap">信頼</span><div class="track"><div id="trustFill" class="fill"></div><span id="trustPc" class="pc"></span></div></div>
       <div class="barbox" data-tip="over"><span class="cap">焦燥</span><div class="track"><div id="overFill" class="fill"></div><span id="overPc" class="pc"></span></div></div>
       <div class="barbox" data-tip="att"><span class="cap">集中</span><div class="track"><div id="attFill" class="fill"></div><span id="attPc" class="pc"></span></div></div>
+      <div class="barbox" data-tip="slop"><span class="cap">汚染</span><div class="track"><div id="slopFill" class="fill"></div><span id="slopPc" class="pc"></span></div></div>
     </div>
   </div>
 
@@ -370,7 +371,7 @@ function spawnReport(orch){
   const load=wpo();
   const overF=Math.max(0, load/S.orchCap - 1);
   const items=Math.max(2, Math.round(load*(0.5+rnd()*0.55)));
-  let trueQ=0.6+rnd()*0.3 - overF*0.42 - slopPressure();
+  let trueQ=0.6+rnd()*0.3 - overF*0.42 - slopPressure() - Math.min(0.5, S.slop*0.0018);
   trueQ=Math.max(0.04,Math.min(0.98,trueQ));
   let conf=trueQ + overF*0.34 + (rnd()-0.5)*0.13;          // overloaded → inflated (the lie)
   conf=Math.max(0.05,Math.min(0.99,conf));
@@ -419,6 +420,8 @@ function tick(dt){
   S.over=Math.max(0,Math.min(100,S.over));
   // rival farm climbs (raw volume, accelerating)
   S.rival+=(11+S.elapsed*0.32)*dt;
+  // ---- contamination self-heals slowly when you stop polluting ----
+  S.slop=Math.max(0, S.slop - S.slop*0.01*dt);
   // ---- singularity race (Act 2) ----
   const _ovf=Math.max(0, wpo()/S.orchCap - 1);
   const eff=(0.25+0.75*S.trust/100)*(2-S.verifyMul)*(1-Math.min(0.6,_ovf*0.4));
@@ -442,6 +445,7 @@ function render(){
   setBar("trust",S.trust, S.trust>40?"linear-gradient(90deg,#2fe6c0,#6bffd8)":"linear-gradient(90deg,#ff8a5a,#ff5366)");
   setBar("over",S.over, S.over>75?"linear-gradient(90deg,#ff6a6a,#ff2d2d)":S.over>45?"linear-gradient(90deg,#ffd24a,#ff9d3d)":"linear-gradient(90deg,#9dff4e,#ffd24a)");
   setBar("att",S.att/S.attMax*100,"linear-gradient(90deg,#5aa0ff,#22e0ff)");
+  setBar("slop",Math.min(100,S.slop), S.slop>55?"linear-gradient(90deg,#a76bff,#ff3d9a)":"linear-gradient(90deg,#5b6bff,#a76bff)");
   document.body.classList.toggle("panic",S.over>=78);
   document.body.classList.toggle("shake",S.over>=92);
   renderOrchs();
@@ -597,7 +601,8 @@ const TIPS={
   orch:["司令塔","あなたと“見えない作業AI大群”の間に立つ中間AI。結果を報告で上げてくる。ZERO/ACE等はただのコードネーム。⚠過負荷だと確信度を盛って嘘をつく。"],
   trust:["信頼","スロップを出荷するほど減る。0で誰も成果を信じなくなる＝クビ(信用破産)。"],
   over:["焦燥","捌けない報告が溜まると上がる。100で燃え尽き。🫁深呼吸で下げられる。"],
-  att:["集中","🔍検証に使う判断の帯域。検証するほど減り、時間で回復。🧠集中力で上限が増える。"]
+  att:["集中","🔍検証に使う判断の帯域。検証するほど減り、時間で回復。🧠集中力で上限が増える。"],
+  slop:["情報環境の汚染","出荷したスロップが世界に累積し、その後の報告の“真の質”を下げる(model collapse)。検証と破棄は汚染を増やさない＝質を選ぶほど世界が綺麗。ゆっくり自然減衰。"]
 };
 let tipPin=null;
 function showTip(el){ const t=TIPS[el.getAttribute("data-tip")]; if(!t)return;
