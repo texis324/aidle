@@ -290,6 +290,7 @@ body.shake #game{animation:sh .18s infinite}
     </div>
     <button class="big" id="startBtn">指揮を執る</button>
     <div class="tiny">クリックだけで遊べる / 音が出ます</div>
+    <div class="tiny" id="startBest" style="margin-top:6px;color:#8190b4"></div>
   </div>
 </div>
 
@@ -335,6 +336,10 @@ const yen=n=>{
   return (neg?"-¥":"¥")+s;
 };
 const SING={KP:0.06, KR:0.26, RACC:0.02};
+const BEST_KEY="aidle_best";
+function loadBest(){ try{ return Object.assign({fastestWin:null,bestEarned:0,wins:0,games:0}, JSON.parse(localStorage.getItem(BEST_KEY)||"{}")); }catch(e){ return {fastestWin:null,bestEarned:0,wins:0,games:0}; } }
+function saveBest(b){ try{ localStorage.setItem(BEST_KEY, JSON.stringify(b)); }catch(e){} }
+function bestLine(b){ return "自己ベスト — "+(b.fastestWin?("最速勝利 "+b.fastestWin+"s"):"勝利まだ")+" ・ 最高成果 "+yen(b.bestEarned)+" ・ 通算 "+b.wins+"勝/"+b.games+"戦"; }
 
 const ORCH_NAMES=["司令塔ZERO","司令塔ACE","司令塔NOVA","司令塔ECHO","司令塔IRIS","司令塔ODIN","司令塔LUNA","司令塔KILO"];
 const CLAIM={
@@ -577,7 +582,8 @@ function gameOver(cause){
   $("#overVerdict").innerHTML = won
     ? "<span style='color:#22e0ff'>数だけの並列農場を、質で出し抜いた。</span>"
     : "<span style='color:#ff3d9a'>並列農場に呑まれた。…で、空前絶後の生産性は？(笑)</span>";
-  $("#overScore").innerHTML="累計成果 "+yen(S.earned)+" ・ 特異点 あなた"+Math.floor(S.sing)+"% / 農場"+Math.floor(S.rsing)+"% ・ スロップ"+S.slop+"件 ・ 生存 "+Math.floor(S.elapsed)+"s";
+  const _b=loadBest(); _b.games++; if(won){ _b.wins++; const _t=Math.floor(S.elapsed); if(!_b.fastestWin||_t<_b.fastestWin) _b.fastestWin=_t; } if(S.earned>_b.bestEarned) _b.bestEarned=Math.round(S.earned); saveBest(_b);
+  $("#overScore").innerHTML="累計成果 "+yen(S.earned)+" ・ 特異点 あなた"+Math.floor(S.sing)+"% / 農場"+Math.floor(S.rsing)+"% ・ スロップ"+S.slop+"件 ・ 生存 "+Math.floor(S.elapsed)+"s<br><span style='color:#8190b4'>"+bestLine(_b)+"</span>";
   $("#over").classList.remove("hide");
 }
 
@@ -591,6 +597,7 @@ window.addEventListener("keydown",e=>{
   if((e.code==="Space"||e.key==="p"||e.key==="P") && S && S.running){ e.preventDefault(); togglePause(); }
 });
 $("#startBtn").addEventListener("click",()=>{ initAudio(); startGame(); });
+(function(){ const _b=loadBest(), _e=document.querySelector("#startBest"); if(_e&&_b.games) _e.textContent=bestLine(_b); })();
 $("#againBtn").addEventListener("click",startGame);
 
 /* ---------- tooltips — tap/hover the jargon to learn it ---------- */
