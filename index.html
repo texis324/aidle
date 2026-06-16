@@ -54,6 +54,20 @@ body.shake #game{animation:sh .18s infinite}
 #overFill{background:linear-gradient(90deg,var(--lime),var(--gold))}
 #attFill{background:linear-gradient(90deg,#5aa0ff,#22e0ff)}
 
+/* ---- singularity race (Act 2) ---- */
+#singRace{margin:8px 16px 0;padding:9px 12px;border:1px solid #4a3270;border-radius:12px;background:linear-gradient(180deg,#15122b,#0e1326)}
+#singRace.hidden{display:none}
+#singRace .srhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+#singRace .srttl{font-size:12px;font-weight:900;letter-spacing:1px;color:#c9b8ff}
+#singRace .srsub{font-size:10px;color:var(--dim)}
+.srbar{display:flex;align-items:center;gap:8px;margin-top:5px}
+.srbar .srcap{font-size:10px;font-weight:700;color:var(--dim);width:62px;text-align:right;white-space:nowrap}
+.srtrack{flex:1;height:13px;background:#0a1120;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.srfill{height:100%;width:0%;border-radius:20px;transition:width .15s linear}
+.srfill.me{background:linear-gradient(90deg,#22e0ff,#2fe6c0)}
+.srfill.ri{background:linear-gradient(90deg,#ff3d9a,#ff5366)}
+.srbar .srpc{font-size:10px;font-weight:800;width:34px}
+
 /* ---- orchestrators ---- */
 #orchRow{display:flex;gap:8px;padding:6px 16px 2px;flex-wrap:wrap;align-items:center}
 #orchRow .ttl{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1px}
@@ -213,6 +227,12 @@ body.shake #game{animation:sh .18s infinite}
     </div>
   </div>
 
+  <div id="singRace" class="hidden">
+    <div class="srhd"><span class="srttl">⚡ 特異点レース</span><span class="srsub" id="srSub">先に到達した者が世界を取る</span></div>
+    <div class="srbar"><span class="srcap">あなた</span><div class="srtrack"><div id="singFill" class="srfill me"></div></div><span class="srpc" id="singPc">0%</span></div>
+    <div class="srbar"><span class="srcap">並列農場</span><div class="srtrack"><div id="rsingFill" class="srfill ri"></div></div><span class="srpc" id="rsingPc">0%</span></div>
+  </div>
+
   <div id="orchRow"><span class="ttl">司令塔の負荷 ▸</span></div>
 
   <div id="feed"></div>
@@ -263,7 +283,8 @@ body.shake #game{animation:sh .18s infinite}
       <b>あなたの仕事</b>＝上がる報告を即断するだけ → <span class="k">出荷</span>信じて即（速いがスロップ混入）／<span class="k">検証</span>集中を使い精査／<span class="k">捨てる</span><br>
       <b style="color:#ffd24a">⚠過負荷</b>の司令塔は確信度を<b style="color:#ffd24a">盛って嘘をつく</b>。鵜呑み注意。<br>
       報告を溜めると<span class="warn">焦燥</span>が満ちて燃え尽き／スロップ出荷で<span class="warn">信頼</span>が尽きてもクビ。<br>
-      <b style="color:#22e0ff">⚔ ライバル＝並列農場</b>。質を無視し数で殴るAI工場。勝敗は<b>純生産性（量×質）</b>で決まる——数だけの農場を、質で出し抜け。
+      <b style="color:#22e0ff">⚔ ライバル＝並列農場</b>。質を無視し数で殴るAI工場。<br>
+      スケールが上がると勝負は<b style="color:#c9b8ff">⚡特異点レース</b>へ——<b>先に100%へ到達した者が世界を取る</b>。質が高いほど少ない量で先着できる。数だけの農場を、質で出し抜け。
     </div>
     <button class="big" id="startBtn">指揮を執る</button>
     <div class="tiny">クリックだけで遊べる / 音が出ます</div>
@@ -303,6 +324,7 @@ const $=s=>document.querySelector(s);
 const FEED=$("#feed"), ORCH=$("#orchRow");
 const rnd=()=>Math.random();
 const yen=n=>"¥"+Math.round(n).toLocaleString();
+const SING={KP:0.06, KR:0.26, RACC:0.02};
 
 const ORCH_NAMES=["司令塔ZERO","司令塔ACE","司令塔NOVA","司令塔ECHO","司令塔IRIS","司令塔ODIN","司令塔LUNA","司令塔KILO"];
 const CLAIM={
@@ -321,7 +343,7 @@ function newState(){
     att:100, attMax:100, attRegen:9,
     workers:6, orchCap:8,
     orchs:[], slop:0,
-    verifyMul:1,
+    verifyMul:1, sing:0, rsing:0, act:1,
     wCost:40, oCost:120, vCost:90, fCost:70, bCost:30,
     feedCap:5, reports:[],
   };
@@ -357,7 +379,7 @@ function resolveReport(r, action){
     const gain=Math.round(good*V - slop*V*1.35);
     S.prod+=gain; if(gain>0) S.earned+=gain;
     if(slop<=0){ S.trust=Math.min(100,S.trust+1.3); txt="+"+yen(gain)+" クリーン"; cls="good"; ding(720); }
-    else { S.trust=Math.max(0,S.trust-slop*1.15); S.slop+=slop; txt=(gain<0?"":"+")+yen(gain)+" スロップ混入"; cls="bad"; buzz(); }
+    else { S.trust=Math.max(0,S.trust-slop*1.15*(1-S.sing/100*0.85)); S.slop+=slop; txt=(gain<0?"":"+")+yen(gain)+" スロップ混入"; cls="bad"; buzz(); }
   } else if(action==="verify"){
     if(S.att<r.vcost){ r.done=false; S.reports.splice(Math.max(0,i),0,r); flash(r,"集中不足"); return; }
     S.att-=r.vcost;
@@ -388,7 +410,15 @@ function tick(dt){
   S.over=Math.max(0,Math.min(100,S.over));
   // rival farm climbs (raw volume, accelerating)
   S.rival+=(11+S.elapsed*0.32)*dt;
+  // ---- singularity race (Act 2) ----
+  const _ovf=Math.max(0, wpo()/S.orchCap - 1);
+  const eff=(0.25+0.75*S.trust/100)*(2-S.verifyMul)*(1-Math.min(0.6,_ovf*0.4));
+  S.sing=Math.min(100, S.sing + SING.KP*S.workers*eff*dt);
+  S.rsing=Math.min(100, S.rsing + SING.KR*(1+S.elapsed*SING.RACC)*dt);
+  if(S.act===1 && (S.sing>4||S.rsing>4)) S.act=2;
   // fail states
+  if(S.sing>=100) return gameOver("singularity");
+  if(S.rsing>=100) return gameOver("devoured");
   if(S.over>=100) return gameOver("drown");
   if(S.trust<=0) return gameOver("trust");
 }
@@ -406,6 +436,13 @@ function render(){
   document.body.classList.toggle("panic",S.over>=78);
   document.body.classList.toggle("shake",S.over>=92);
   renderOrchs();
+  // singularity race (Act 2)
+  const sr=$("#singRace");
+  if(S.act>=2){ sr.classList.remove("hidden");
+    $("#singFill").style.width=S.sing+"%"; $("#singPc").textContent=Math.floor(S.sing)+"%";
+    $("#rsingFill").style.width=S.rsing+"%"; $("#rsingPc").textContent=Math.floor(S.rsing)+"%";
+    $("#srSub").textContent=S.sing>=S.rsing?"リード中——先着で世界を取る":"農場が先行——抜かれたら消える";
+  } else sr.classList.add("hidden");
   // verify affordability on live cards
   for(const r of S.reports) if(r.verBtn) r.verBtn.classList.toggle("off", S.att<r.vcost);
   // shop
@@ -509,19 +546,25 @@ function setPaused(p){
 function togglePause(){ if(S&&S.running) setPaused(!S.paused); }
 function gameOver(cause){
   S.running=false; document.body.classList.remove("panic","shake");
-  tone(420,.2,"sawtooth",.08); setTimeout(()=>tone(280,.25,"sawtooth",.08),150); setTimeout(()=>tone(150,.4,"sawtooth",.08),330);
-  const win=S.earned>=S.rival;
-  $("#overTitle").textContent = cause==="trust"?"信用破産":"溺れた";
-  $("#overSub").textContent = cause==="trust"?"TRUST BANKRUPT":"DROWNED IN REPORTS";
-  $("#overLine").innerHTML = cause==="trust"
-    ? "スロップを出荷しすぎた。<span class='hl'>信頼</span>が尽き、誰もお前の成果を信じなくなった。"
-    : "報告の濁流に呑まれた。<span class='hl'>"+S.workers+"体</span>のAIを <span class='hl'>"+S.orchs.length+"司令塔</span>で回し、<span class='hl'>"+Math.floor(S.elapsed)+"秒</span>持ちこたえた。";
+  const won = cause==="singularity" ? true : cause==="devoured" ? false : S.earned>=S.rival;
+  if(won){ tone(523,.12,"sine",.07); setTimeout(()=>tone(659,.12,"sine",.07),120); setTimeout(()=>tone(784,.32,"sine",.08),260); }
+  else { tone(420,.2,"sawtooth",.08); setTimeout(()=>tone(280,.25,"sawtooth",.08),150); setTimeout(()=>tone(150,.4,"sawtooth",.08),330); }
+  const M={
+    trust:["信用破産","TRUST BANKRUPT","スロップを出荷しすぎた。<span class='hl'>信頼</span>が尽き、誰もお前の成果を信じなくなった。"],
+    drown:["溺れた","DROWNED IN REPORTS","報告の濁流に呑まれた。<span class='hl'>"+S.workers+"体</span>のAIを <span class='hl'>"+S.orchs.length+"司令塔</span>で回し、<span class='hl'>"+Math.floor(S.elapsed)+"秒</span>持ちこたえた。"],
+    singularity:["特異点 到達","SINGULARITY REACHED","お前が先に特異点を突き抜けた。<span class='hl'>質</span>が量を出し抜き、世界はお前のものになった。"],
+    devoured:["世界が呑まれた","DEVOURED","<span class='hl'>並列農場</span>が先に特異点へ到達。スロップの大群が世界を覆い、指揮官はもう要らない。"]
+  };
+  const m=M[cause]||M.drown;
+  $("#overTitle").textContent=m[0];
+  $("#overSub").textContent=m[1];
+  $("#overLine").innerHTML=m[2];
   $("#overMe").textContent=yen(S.earned);
   $("#overRi").textContent=yen(S.rival);
-  $("#overVerdict").innerHTML = win
-    ? "<span style='color:#22e0ff'>数だけの並列農場を出し抜いた。質が勝った。</span>"
+  $("#overVerdict").innerHTML = won
+    ? "<span style='color:#22e0ff'>数だけの並列農場を、質で出し抜いた。</span>"
     : "<span style='color:#ff3d9a'>並列農場に呑まれた。…で、空前絶後の生産性は？(笑)</span>";
-  $("#overScore").innerHTML="累計成果 "+yen(S.earned)+" ・ スロップ出荷 "+S.slop+"件 ・ 生存 "+Math.floor(S.elapsed)+"s";
+  $("#overScore").innerHTML="累計成果 "+yen(S.earned)+" ・ 特異点 あなた"+Math.floor(S.sing)+"% / 農場"+Math.floor(S.rsing)+"% ・ スロップ"+S.slop+"件 ・ 生存 "+Math.floor(S.elapsed)+"s";
   $("#over").classList.remove("hide");
 }
 
