@@ -281,6 +281,7 @@ body.shake #game{animation:sh .18s infinite}
     </div>
     <div class="howto">
       <b>あなたの仕事</b>＝上がる報告を即断するだけ → <span class="k">出荷</span>信じて即（速いがスロップ混入）／<span class="k">検証</span>集中を使い精査／<span class="k">捨てる</span><br>
+      <span class="k">確信度</span>＝司令塔の<b>自己申告</b>（「このバッチ、N%は正しいはず」）。AIは止まらず<b>確信が低くても報告を上げ続ける</b>——精度より量が常態だからだ。<br>
       <b style="color:#ffd24a">⚠過負荷</b>の司令塔は確信度を<b style="color:#ffd24a">盛って嘘をつく</b>。鵜呑み注意。<br>
       報告を溜めると<span class="warn">焦燥</span>が満ちて燃え尽き／スロップ出荷で<span class="warn">信頼</span>が尽きてもクビ。<br>
       <b style="color:#22e0ff">⚔ ライバル＝並列農場</b>。質を無視し数で殴るAI工場。<br>
@@ -323,7 +324,15 @@ body.shake #game{animation:sh .18s infinite}
 const $=s=>document.querySelector(s);
 const FEED=$("#feed"), ORCH=$("#orchRow");
 const rnd=()=>Math.random();
-const yen=n=>"¥"+Math.round(n).toLocaleString();
+const DISP=1e9;
+const yen=n=>{
+  let v=n*DISP; const neg=v<0; v=Math.abs(v); let s;
+  if(v>=1e12) s=(v/1e12).toFixed(1).replace(/\.0$/,"")+"兆";
+  else if(v>=1e8) s=Math.round(v/1e8).toLocaleString()+"億";
+  else if(v>=1e4) s=Math.round(v/1e4).toLocaleString()+"万";
+  else s=Math.round(v).toLocaleString();
+  return (neg?"-¥":"¥")+s;
+};
 const SING={KP:0.06, KR:0.26, RACC:0.02};
 
 const ORCH_NAMES=["司令塔ZERO","司令塔ACE","司令塔NOVA","司令塔ECHO","司令塔IRIS","司令塔ODIN","司令塔LUNA","司令塔KILO"];
